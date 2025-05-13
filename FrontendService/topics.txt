@@ -1,0 +1,20 @@
+task-create - запрос из FrontendService к TaskService на создание задачи
+task-create-response - запрос от TaskService к FrontendService о результатах создания задачи
+
+task-update
+task-update-response
+
+user-get-teams
+user-get-teams-response
+
+user-create-team
+user-create-team-response
+
+team-get-info
+team-get-info-response
+
+team-delete-member
+team-delete-member-response
+
+team-add-member
+team-add-member-response

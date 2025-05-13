@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Task Details</title>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/tailwindcss/2.2.19/tailwind.min.css" rel="stylesheet">
+    <script defer src="https://cdnjs.cloudflare.com/ajax/libs/alpinejs/3.12.0/cdn.min.js"></script>
+</head>
+<body class="bg-gray-100 p-6">
+<div class="max-w-4xl mx-auto bg-white p-6 rounded-lg shadow-lg">
+    <h1 class="text-2xl font-bold mb-4" th:text="${task.title}">Task Title</h1>
+    <p class="text-gray-700 mb-2"><strong>Description:</strong> <span th:text="${task.description}">Task Description</span></p>
+    <p class="text-gray-700 mb-2"><strong>Status:</strong> <span th:text="${task.status}">NEW</span></p>
+    <p class="text-gray-700 mb-2"><strong>Priority:</strong> <span th:text="${task.priority}">LOW</span></p>
+    <p class="text-gray-700 mb-2"><strong>Due Date:</strong> <span th:text="${task.dueDate}">2025-03-22</span></p>
+    <p class="text-gray-700 mb-2"><strong>Created At:</strong> <span th:text="${task.createdAt}">2025-03-01</span></p>
+    <p class="text-gray-700 mb-2"><strong>Updated At:</strong> <span th:text="${task.updatedAt}">2025-03-05</span></p>
+    <button class="mt-4 bg-blue-500 text-white py-2 px-4 rounded" @click="openModal = true">Edit Task</button>
+</div>
+
+<!-- Модальное окно -->
+<div x-data="{ openModal: false }">
+    <div x-show="openModal" class="fixed inset-0 bg-gray-800 bg-opacity-50 flex items-center justify-center">
+        <div class="bg-white p-6 rounded-lg shadow-lg max-w-md w-full">
+            <h2 class="text-xl font-bold mb-4">Edit Task</h2>
+            <form th:action="@{/tasks/edit}" th:object="${task}" method="post">
+                <input type="text" name="title" placeholder="Title" class="w-full mb-2 p-2 border" th:value="${task.title}" />
+                <textarea name="description" placeholder="Description" class="w-full mb-2 p-2 border">...</textarea>
+                <select name="status" class="w-full mb-2 p-2 border">
+                    <option value="NEW">New</option>
+                    <option value="IN_PROGRESS">In Progress</option>
+                    <option value="COMPLETED">Completed</option>
+                    <option value="ARCHIVED">Archived</option>
+                </select>
+                <button type="submit" class="bg-green-500 text-white py-2 px-4 rounded">Save</button>
+                <button type="button" @click="openModal = false" class="ml-2 bg-red-500 text-white py-2 px-4 rounded">Cancel</button>
+            </form>
+        </div>
+    </div>
+</div>
+</body>
+</html>

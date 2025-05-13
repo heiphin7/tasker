@@ -1,0 +1,450 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tasks - TaskMaster</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+
+<body class="bg-gray-50 min-h-screen">
+<div class="min-h-full">
+    <!-- Navigation -->
+    <nav class="bg-white shadow-sm">
+        <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+            <div class="flex h-16 justify-between">
+                <div class="flex">
+                    <div class="flex flex-shrink-0 items-center">
+                        <i class="fas fa-tasks text-indigo-600 text-2xl"></i>
+                        <span class="ml-2 text-xl font-semibold text-gray-900">TaskMaster</span>
+                    </div>
+                </div>
+                <div class="flex items-center">
+                    <a href="/dashboard" class="text-gray-600 hover:text-gray-900 px-3 py-2 rounded-md text-sm font-medium">
+                        Dashboard
+                    </a>
+                    <a href="/tasks" class="text-indigo-600 px-3 py-2 rounded-md text-sm font-medium">
+                        Tasks
+                    </a>
+                    <a href="/teams" class="text-gray-600 hover:text-gray-900 px-3 py-2 rounded-md text-sm font-medium">
+                        Teams
+                    </a>
+                    <form th:action="@{/logout}" method="post" class="ml-4">
+                        <button type="submit" class="text-gray-600 hover:text-gray-900 px-3 py-2 rounded-md text-sm font-medium">
+                            Logout
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <main>
+        <div class="mx-auto max-w-7xl py-6 sm:px-6 lg:px-8">
+            <!-- Header and create task button -->
+            <div class="px-4 py-6 sm:px-0">
+                <!-- Сообщения об успехе и ошибках -->
+                <div th:if="${message}" class="mb-4 bg-green-100 border border-green-400 text-green-700 px-4 py-2 rounded">
+                    <p th:text="${message}"></p>
+                </div>
+                <div th:if="${errorMessage}" class="mb-4 bg-red-100 border border-red-400 text-red-700 px-4 py-2 rounded">
+                    <p th:text="${errorMessage}"></p>
+                </div>
+
+
+                <div class="flex justify-between items-center mb-6">
+                    <h1 class="text-2xl font-semibold text-gray-900">Tasks</h1>
+                    <button onclick="openCreateTaskModal()" class="bg-indigo-600 text-white px-4 py-2 rounded-md hover:bg-indigo-700 transition duration-150 ease-in-out">
+                        <i class="fas fa-plus mr-2"></i>Create Task
+                    </button>
+                </div>
+
+                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+                    <div class="task-card bg-white shadow-md rounded-lg p-4 hover:shadow-lg transition-all duration-200 transform hover:-translate-y-1 cursor-pointer relative group"
+                         th:each="task : ${tasks}"
+                         th:data-status="${task.status}"
+                         th:data-priority="${task.priority}"
+                         th:data-title="${task.title}"
+                         th:data-description="${task.description}"
+                         th:data-due-date="${task.dueDate}"
+                         th:data-task-id="${task.id}"
+                         onclick="openTaskDetails(this)">
+                        <div class="absolute top-2 right-2 priority-icon"></div>
+
+                        <!-- Task title and status -->
+                        <div class="flex items-center justify-between mb-2">
+                            <h3 class="text-lg font-semibold text-gray-900" th:text="${task.title}">Task Title</h3>
+                            <span class="status-label px-2 py-1 rounded text-sm"></span>
+                        </div>
+
+                        <!-- Task description -->
+                        <p class="text-sm text-gray-500 mb-4 line-clamp-2" th:text="${task.description}">Task Description</p>
+
+                        <!-- Due date -->
+                        <div class="text-sm text-gray-600 mb-2">
+                            <i class="fas fa-calendar-alt mr-1"></i>
+                            Due: <span th:text="${task.dueDate}">2025-03-22</span>
+                        </div>
+
+                        <!-- Иконка удаления задачи -->
+                        <form th:action="@{/tasks/delete/{id}(id=${task.id})}" method="post"
+                              onsubmit="return confirm('Вы точно хотите удалить задачу?')">
+                            <button type="submit" class="absolute bottom-2 right-2 text-red-500 hover:text-red-700 transition-colors">
+                                <i class="fas fa-trash-alt"></i>
+                            </button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+</div>
+
+<!-- Create Task Modal -->
+<div id="taskModal" class="hidden fixed inset-0 bg-gray-500 bg-opacity-75 overflow-y-auto z-50">
+    <div class="flex min-h-full items-center justify-center p-4">
+        <div class="relative bg-white rounded-lg max-w-2xl w-full">
+            <div class="px-6 py-4 border-b">
+                <h3 class="text-lg font-medium text-gray-900" id="modalTitle">Create Task</h3>
+            </div>
+
+            <form id="taskForm" th:action="@{/tasks/create}" method="post" class="px-6 py-4">
+                <div class="space-y-4">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700">Title</label>
+                        <input type="text" th:field="*{createTaskDTO.title}" required class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700">Description</label>
+                        <textarea th:field="*{createTaskDTO.description}" rows="3" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"></textarea>
+                    </div>
+                    <div class="grid grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700">Delivery Date</label>
+                            <input type="date" th:field="*{createTaskDTO.dueDate}" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500">
+                        </div>
+                        <div class="grid grid-cols-2 gap-4">
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700">Hour</label>
+                                <input type="number" th:field="*{createTaskDTO.hours}" min="0" max="23" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500">
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700">Minutes</label>
+                                <input type="number" th:field="*{createTaskDTO.minutes}" min="0" max="59" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500">
+                            </div>
+                        </div>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700">Priority</label>
+                        <select th:field="*{createTaskDTO.priority}" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500">
+                            <option value="HIGH">High</option>
+                            <option value="MEDIUM">Medium</option>
+                            <option value="LOW">Low</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="mt-6 flex justify-end space-x-3">
+                    <button type="button" onclick="closeTaskModal()" class="px-4 py-2 border rounded-md text-gray-700 hover:bg-gray-50">
+                        Cancel
+                    </button>
+                    <button type="submit" class="px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700">
+                        Save
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Task Details Modal -->
+<div id="taskDetailsModal" class="hidden fixed inset-0 bg-gray-500 bg-opacity-75 overflow-y-auto z-50">
+    <div class="flex min-h-full items-center justify-center p-4">
+        <div class="relative bg-white rounded-lg max-w-2xl w-full transform transition-all">
+            <div class="absolute top-0 right-0 pt-4 pr-4">
+                <button onclick="closeTaskDetails()" class="text-gray-400 hover:text-gray-500">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+
+            <div class="px-6 py-4">
+                <div class="flex items-center justify-between mb-4">
+                    <h2 id="detailsTitle" data-task-id="" class="text-2xl font-bold text-gray-900"></h2>
+                    <div class="flex items-center space-x-2">
+                        <span id="detailsPriority" class="priority-badge px-3 py-1 rounded-full text-sm font-medium"></span>
+                        <span id="detailsStatus" class="status-badge px-3 py-1 rounded-full text-sm font-medium" style="margin-right: 15px"></span>
+                    </div>
+                </div>
+
+                <div class="space-y-4">
+                    <div>
+                        <h3 class="text-lg font-medium text-gray-900 mb-2">Description</h3>
+                        <p id="detailsDescription" class="text-gray-600"></p>
+                    </div>
+
+                    <div class="border-t pt-4">
+                        <div class="flex items-center text-gray-600">
+                            <i class="fas fa-calendar-alt mr-2"></i>
+                            <span>Due Date: </span>
+                            <span id="detailsDueDate" class="ml-2 font-medium"></span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="px-6 py-4 bg-gray-50 rounded-b-lg">
+                <!-- Кнопка Изменить -->
+                <button onclick="openEditModal()" class="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600 mr-2">
+                    Изменить
+                </button>
+
+                <div class="flex justify-end">
+                    <button onclick="closeTaskDetails()" class="px-4 py-2 bg-white border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50">
+                        Close
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+<!-- Модальное окно для редактирования задачи -->
+<div id="editTaskModal" class="hidden fixed inset-0 bg-gray-500 bg-opacity-75 overflow-y-auto z-50">
+    <div class="flex min-h-full items-center justify-center p-4">
+        <div class="relative bg-white rounded-lg max-w-2xl w-full transform transition-all">
+            <div class="absolute top-0 right-0 pt-4 pr-4">
+                <button onclick="closeEditModal()" class="text-gray-400 hover:text-gray-500">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+
+            <form id="editTaskForm" th:action="@{/tasks/edit/__ID__}" th:method="post">
+                <div class="px-6 py-4">
+                    <h2 class="text-2xl font-bold text-gray-900 mb-4">Изменить задачу</h2>
+
+                    <input type="hidden" id="editTaskId" name="taskId">
+
+                    <div class="mb-4">
+                        <label class="block text-sm font-medium text-gray-700">Название</label>
+                        <input id="editTitle" name="title" type="text" class="mt-1 block w-full border-gray-300 rounded-md">
+                    </div>
+
+                    <div class="mb-4">
+                        <label class="block text-sm font-medium text-gray-700">Описание</label>
+                        <textarea id="editDescription" name="description" class="mt-1 block w-full border-gray-300 rounded-md"></textarea>
+                    </div>
+
+                    <div class="mb-4">
+                        <label class="block text-sm font-medium text-gray-700">Статус</label>
+                        <select id="editStatus" name="status" class="mt-1 block w-full border-gray-300 rounded-md">
+                            <option value="NEW">New</option>
+                            <option value="IN_PROGRESS">In Progress</option>
+                            <option value="COMPLETED">Completed</option>
+                        </select>
+                    </div>
+
+                    <div class="mb-4">
+                        <label class="block text-sm font-medium text-gray-700">Приоритет</label>
+                        <input id="editPriority" name="priority" type="text" class="mt-1 block w-full border-gray-300 rounded-md">
+                    </div>
+                </div>
+
+                <div class="px-6 py-4 bg-gray-50 rounded-b-lg flex justify-end">
+                    <button type="button" onclick="closeEditModal()" class="px-4 py-2 bg-white border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50 mr-2">
+                        Отмена
+                    </button>
+                    <button type="submit" class="px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600">
+                        Сохранить
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script>
+    function openCreateTaskModal() {
+        const taskForm = document.getElementById('taskForm');
+        if (taskForm) {
+            taskForm.reset();
+        }
+        document.getElementById('taskModal').classList.remove('hidden');
+    }
+
+    function closeTaskModal() {
+        document.getElementById('taskModal').classList.add('hidden');
+    }
+
+    function openTaskDetails(taskCard) {
+        const modal = document.getElementById('taskDetailsModal');
+        const title = taskCard.getAttribute('data-title');
+        const description = taskCard.getAttribute('data-description');
+        const status = taskCard.getAttribute('data-status');
+        const priority = taskCard.getAttribute('data-priority');
+        const dueDate = taskCard.getAttribute('data-due-date');
+        const taskId = taskCard.getAttribute('data-task-id');
+
+        // Update modal content
+        document.getElementById('detailsTitle').textContent = title;
+        document.getElementById('detailsTitle').setAttribute('data-task-id', taskId);
+        document.getElementById('detailsDescription').textContent = description;
+        document.getElementById('detailsDueDate').textContent = dueDate;
+
+        // Update status badge
+        const statusBadge = document.getElementById('detailsStatus');
+        statusBadge.textContent = status.replace('_', ' ');
+        updateStatusStyle(statusBadge, status);
+
+        // Update priority badge
+        const priorityBadge = document.getElementById('detailsPriority');
+        priorityBadge.textContent = priority;
+        updatePriorityStyle(priorityBadge, priority);
+
+        modal.classList.remove('hidden');
+    }
+
+    function closeTaskDetails() {
+        document.getElementById('taskDetailsModal').classList.add('hidden');
+    }
+
+    function updateStatusStyle(element, status) {
+        // Remove existing classes
+        element.className = 'status-badge px-3 py-1 rounded-full text-sm font-medium';
+
+        // Add new classes based on status
+        switch (status) {
+            case 'NEW':
+                element.classList.add('bg-blue-100', 'text-blue-800');
+                break;
+            case 'IN_PROGRESS':
+                element.classList.add('bg-yellow-100', 'text-yellow-800');
+                break;
+            case 'COMPLETED':
+                element.classList.add('bg-green-100', 'text-green-800');
+                break;
+            case 'ARCHIVED':
+                element.classList.add('bg-gray-100', 'text-gray-800');
+                break;
+            default:
+                element.classList.add('bg-red-100', 'text-red-800');
+        }
+    }
+
+    function updatePriorityStyle(element, priority) {
+        // Remove existing classes
+        element.className = 'priority-badge px-3 py-1 rounded-full text-sm font-medium';
+
+        // Add new classes based on priority
+        switch (priority) {
+            case 'LOW':
+                element.classList.add('bg-green-100', 'text-green-800');
+                break;
+            case 'MEDIUM':
+                element.classList.add('bg-yellow-100', 'text-yellow-800');
+                break;
+            case 'HIGH':
+                element.classList.add('bg-orange-100', 'text-orange-800');
+                break;
+            case 'URGENT':
+                element.classList.add('bg-red-100', 'text-red-800');
+                break;
+            default:
+                element.classList.add('bg-gray-100', 'text-gray-800');
+        }
+    }
+
+    document.addEventListener("DOMContentLoaded", () => {
+        const taskCards = document.querySelectorAll(".task-card");
+
+        taskCards.forEach(card => {
+            const status = card.getAttribute("data-status");
+            const priority = card.getAttribute("data-priority");
+
+            // Styles for task status
+            const statusLabel = card.querySelector(".status-label");
+            if (statusLabel) {
+                switch (status) {
+                    case "NEW":
+                        statusLabel.textContent = "New";
+                        statusLabel.classList.add("bg-blue-100", "text-blue-800");
+                        break;
+                    case "IN_PROGRESS":
+                        statusLabel.textContent = "In Progress";
+                        statusLabel.classList.add("bg-yellow-100", "text-yellow-800");
+                        break;
+                    case "COMPLETED":
+                        statusLabel.textContent = "Completed";
+                        statusLabel.classList.add("bg-green-100", "text-green-800");
+                        break;
+                    case "ARCHIVED":
+                        statusLabel.textContent = "Archived";
+                        statusLabel.classList.add("bg-gray-100", "text-gray-800");
+                        break;
+                    default:
+                        statusLabel.textContent = "Unknown";
+                        statusLabel.classList.add("bg-red-100", "text-red-800");
+                }
+            }
+
+            // Styles for task priority
+            const priorityIcon = card.querySelector(".priority-icon");
+            switch (priority) {
+                case "LOW":
+                    priorityIcon.innerHTML = '<span class="w-3 h-3 bg-green-400 rounded-full inline-block"></span>';
+                    break;
+                case "MEDIUM":
+                    priorityIcon.innerHTML = '<span class="w-3 h-3 bg-yellow-400 rounded-full inline-block"></span>';
+                    break;
+                case "HIGH":
+                    priorityIcon.innerHTML = '<span class="w-3 h-3 bg-orange-400 rounded-full inline-block"></span>';
+                    break;
+                case "URGENT":
+                    priorityIcon.innerHTML = '<span class="w-3 h-3 bg-red-400 rounded-full inline-block"></span>';
+                    break;
+                default:
+                    priorityIcon.innerHTML = '<span class="w-3 h-3 bg-gray-400 rounded-full inline-block"></span>';
+            }
+        });
+    });
+
+    // Close modals when clicking outside
+    window.onclick = function(event) {
+        const taskModal = document.getElementById('taskModal');
+        const taskDetailsModal = document.getElementById('taskDetailsModal');
+        if (event.target === taskModal) {
+            closeTaskModal();
+        }
+        if (event.target === taskDetailsModal) {
+            closeTaskDetails();
+        }
+    }
+
+    function openEditModal() {
+        // Получаем данные текущей задачи из модалки задачи
+        const title = document.getElementById("detailsTitle").textContent;
+        const description = document.getElementById("detailsDescription").textContent;
+        const status = document.getElementById("detailsStatus").textContent.toUpperCase();
+        const priority = document.getElementById("detailsPriority").textContent;
+        const taskId = document.getElementById("detailsTitle").getAttribute("data-task-id");
+
+        // Заполняем модалку редактирования
+        document.getElementById("editTitle").value = title;
+        document.getElementById("editDescription").value = description;
+        document.getElementById("editStatus").value = status;
+        document.getElementById("editPriority").value = priority;
+        document.getElementById("editTaskId").value = taskId;
+
+        // Динамически обновляем action формы для редактирования задачи
+        document.getElementById("editTaskForm").setAttribute("action", "/tasks/edit/" + taskId);
+
+        // Показываем модалку редактирования
+        document.getElementById("editTaskModal").classList.remove("hidden");
+    }
+
+    function closeEditModal() {
+        document.getElementById("editTaskModal").classList.add("hidden");
+    }
+</script>
+</body>
+</html>

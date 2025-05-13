@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <title>Профиль пользователя - TaskMaster</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet"
+          href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body class="bg-gray-50 min-h-screen font-sans text-gray-800">
+
+<!-- Навигация -->
+<nav class="bg-white shadow-sm mb-8">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div class="flex justify-between h-16">
+            <div class="flex items-center">
+                <i class="fas fa-tasks text-indigo-600 text-2xl"></i>
+                <span class="ml-2 text-xl font-semibold">TaskMaster</span>
+            </div>
+            <div class="flex items-center space-x-4">
+                <a href="/dashboard"
+                   class="text-gray-600 hover:text-gray-900 text-sm font-medium">Main</a>
+                <a href="/tasks"
+                   class="text-gray-600 hover:text-gray-900 text-sm font-medium">Tasks</a>
+                <a href="/user-info" class="text-gray-600 hover:text-gray-900 px-3 py-2 rounded-md text-sm font-medium">
+                    Profile
+                </a>
+                <form th:action="@{/logout}" method="post">
+                    <button type="submit"
+                            class="text-gray-600 hover:text-gray-900 text-sm font-medium">Logout</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</nav>
+
+<!-- Flash-сообщения -->
+<div class="max-w-3xl mx-auto px-6 mt-6">
+    <div th:if="${success}"
+         class="mb-4 rounded-md bg-green-100 border border-green-300 text-green-800 px-4 py-3">
+        <p th:text="${success}"></p>
+    </div>
+    <div th:if="${error}"
+         class="mb-4 rounded-md bg-red-100 border border-red-300 text-red-800 px-4 py-3">
+        <p th:text="${error}"></p>
+    </div>
+</div>
+
+<!-- Профиль -->
+<div class="max-w-3xl mx-auto px-6">
+    <div class="bg-white rounded-lg shadow p-6">
+        <div class="flex items-center justify-between mb-6">
+            <h1 class="text-2xl font-semibold flex items-center">
+                <i class="fas fa-user text-indigo-600 mr-2"></i> Профиль пользователя
+            </h1>
+            <button onclick="openModal()"
+                    class="flex items-center bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-md text-sm font-medium">
+                <i class="fas fa-edit mr-2"></i> Редактировать
+            </button>
+        </div>
+        <div class="space-y-4 text-gray-700">
+            <div>
+                <span class="font-semibold">Имя пользователя (username):</span>
+                <span th:text="${username}">Иван</span>
+            </div>
+            <div>
+                <span class="font-semibold">Имя:</span>
+                <span th:text="${firstName}">Иван</span>
+            </div>
+            <div>
+                <span class="font-semibold">Фамилия:</span>
+                <span th:text="${lastName}">Иванов</span>
+            </div>
+            <div>
+                <span class="font-semibold">Email:</span>
+                <span th:text="${email}">ivan@example.com</span>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Модалка редактирования -->
+<div id="editModal"
+     class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center hidden z-50">
+    <div class="bg-white rounded-lg shadow-lg w-full max-w-md p-6 relative">
+        <h2 class="text-xl font-semibold mb-4 flex items-center">
+            <i class="fas fa-user-edit text-indigo-600 mr-2"></i> Редактировать профиль
+        </h2>
+        <form th:action="@{/users/updateInfo}" method="post" class="space-y-4">
+            <input type="hidden" name="id" th:value="${id}" />
+
+            <div>
+                <label class="block text-sm font-medium text-gray-700">Имя пользователя (username)</label>
+                <input id="inputUsername" name="username" type="text"
+                       th:value="${username}" required
+                       class="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 shadow-sm focus:ring-indigo-500 focus:border-indigo-500">
+            </div>
+
+            <div>
+                <label class="block text-sm font-medium text-gray-700">Имя</label>
+                <input id="inputFirstName" name="firstName" type="text"
+                       th:value="${firstName}" required
+                       class="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 shadow-sm focus:ring-indigo-500 focus:border-indigo-500">
+            </div>
+
+            <div>
+                <label class="block text-sm font-medium text-gray-700">Фамилия</label>
+                <input id="inputLastName" name="lastName" type="text"
+                       th:value="${lastName}" required
+                       class="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 shadow-sm focus:ring-indigo-500 focus:border-indigo-500">
+            </div>
+
+            <div>
+                <label class="block text-sm font-medium text-gray-700">Email</label>
+                <input id="inputEmail" name="email" type="email"
+                       th:value="${email}" required
+                       class="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 shadow-sm focus:ring-indigo-500 focus:border-indigo-500">
+            </div>
+
+            <div class="flex justify-end space-x-2 mt-4">
+                <button type="button" onclick="closeModal()"
+                        class="px-4 py-2 bg-gray-200 text-gray-700 rounded-md hover:bg-gray-300">
+                    Отмена
+                </button>
+                <button id="saveBtn" type="submit"
+                        class="px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                        disabled>
+                    Сохранить
+                </button>
+            </div>
+        </form>
+
+        <button onclick="closeModal()"
+                class="absolute top-2 right-2 text-gray-400 hover:text-gray-600">
+            <i class="fas fa-times"></i>
+        </button>
+    </div>
+</div>
+
+<script>
+    const editModal = document.getElementById('editModal');
+    const inputUsername = document.getElementById('inputUsername');
+    const inputFirstName = document.getElementById('inputFirstName');
+    const inputLastName = document.getElementById('inputLastName');
+    const inputEmail = document.getElementById('inputEmail');
+    const saveBtn = document.getElementById('saveBtn');
+
+    // Сохраняем начальные значения
+    const initial = {
+        username: inputUsername.value,
+        firstName: inputFirstName.value,
+        lastName: inputLastName.value,
+        email: inputEmail.value
+    };
+
+    // Проверка: изменилось ли хоть что-то
+    function checkChanges() {
+        const changed =
+            inputUsername.value !== initial.username ||
+            inputFirstName.value !== initial.firstName ||
+            inputLastName.value !== initial.lastName ||
+            inputEmail.value !== initial.email;
+        saveBtn.disabled = !changed;
+    }
+
+    // При каждом вводе проверяем
+    [inputUsername, inputFirstName, inputLastName, inputEmail]
+        .forEach(el => el.addEventListener('input', checkChanges));
+
+    function openModal() {
+        editModal.classList.remove('hidden');
+        checkChanges();
+    }
+    function closeModal() {
+        editModal.classList.add('hidden');
+    }
+
+    // По-умолчанию Save отключён
+    document.addEventListener('DOMContentLoaded', () => saveBtn.disabled = true);
+</script>
+
+</body>
+</html>

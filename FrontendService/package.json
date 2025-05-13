@@ -1,0 +1,14 @@
+{
+  "name": "frontend-service",
+  "version": "1.0.0",
+  "description": "Frontend Service for TaskMaster",
+  "scripts": {
+    "build": "echo \"No build required for Thymeleaf templates\" && exit 0",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "TaskMaster Team",
+  "license": "MIT",
+  "dependencies": {
+    "tailwindcss": "^3.4.1"
+  }
+} 

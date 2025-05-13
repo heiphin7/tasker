@@ -1,0 +1,758 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Team Details</title>
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+    <!-- Подключаем Font Awesome, если ещё не подключен -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css" />
+</head>
+<body class="bg-gray-100 font-sans">
+<!-- HEADER -->
+<nav class="bg-white shadow-sm border-b">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div class="flex items-center justify-between h-16">
+            <div class="flex items-center">
+                <div class="flex-shrink-0 flex items-center">
+                    <i class="fas fa-tasks text-indigo-600 text-2xl"></i>
+                    <span class="ml-2 text-xl font-semibold text-gray-900">TaskMaster</span>
+                </div>
+            </div>
+            <div class="flex items-center space-x-4">
+                <a href="/dashboard" class="text-gray-600 hover:text-gray-900 px-3 py-2 rounded-md text-sm font-medium transition">Main</a>
+                <a href="/tasks" class="text-indigo-600 px-3 py-2 rounded-md text-sm font-medium transition">Tasks</a>
+                <a href="/teams" class="text-gray-600 hover:text-gray-900 px-3 py-2 rounded-md text-sm font-medium transition">Teams</a>
+                <a href="/user-info" class="text-gray-600 hover:text-gray-900 px-3 py-2 rounded-md text-sm font-medium">
+                    Profile
+                </a>
+                <form action="/logout" method="post" class="ml-4">
+                    <button type="submit" class="text-gray-600 hover:text-gray-900 px-3 py-2 rounded-md text-sm font-medium transition">Logout</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</nav>
+
+<!-- MAIN CONTENT -->
+<main class="max-w-7xl mx-auto p-6">
+    <!-- Flash Messages -->
+    <div class="mb-4">
+        <div id="errorContainer" class="mb-4"></div>
+        <div th:if="${message}" class="bg-green-50 border border-green-400 text-green-800 px-4 py-3 rounded relative shadow-md">
+            <span class="font-bold">Успех:</span> <span th:text="${message}"></span>
+        </div>
+        <div th:if="${errorMessage}" class="bg-red-50 border border-red-400 text-red-800 px-4 py-3 rounded relative shadow-md">
+            <span class="font-bold">Ошибка:</span> <span th:text="${errorMessage}"></span>
+        </div>
+    </div>
+
+    <!-- Team Name and Description -->
+    <section class="mb-8 text-center">
+        <h1 class="text-3xl font-bold" th:text="${team.name}">Team Name</h1>
+        <p class="text-gray-600" th:text="${team.description}">Team Description</p>
+    </section>
+
+    <!-- Combined Section: Actions, Tasks and Members -->
+    <section class="flex flex-col md:flex-row items-start justify-between space-y-6 md:space-y-0 md:space-x-6">
+        <!-- Left Actions -->
+        <div class="flex flex-col space-y-4 w-full md:w-1/4">
+            <button onclick="openModal('createTaskModal')" class="w-full bg-indigo-600 text-white px-4 py-2 rounded hover:bg-indigo-700 transition">
+                    Создать новую задачу
+            </button>
+            <button onclick="openModal('addMemberModal')" class="w-full bg-indigo-600 text-white px-4 py-2 rounded hover:bg-indigo-700 transition">
+                    Добавить участника
+            </button>
+            <button onclick="handleLeaveTeam()" class="w-full bg-red-600 text-white px-4 py-2 rounded hover:bg-red-700 transition">
+                Покинуть команду
+            </button>
+        </div>
+
+        <!-- Center Tasks -->
+        <div class="w-full md:w-1/2">
+            <h3 class="text-xl font-bold mb-4 text-center md:text-left">Список задач</h3>
+            <ul class="space-y-4">
+                <!-- При клике на всю карточку (li) открываем детали задачи -->
+                <li th:each="task : ${teamTasks}"
+                    class="cursor-pointer relative bg-white p-4 rounded shadow transition hover:shadow-lg"
+                    th:attr="
+                           data-task-id=${task.id},
+                           data-title=${task.title},
+                           data-description=${task.description},
+                           data-status=${task.status},
+                           data-priority=${task.priority},
+                           data-due-date=${task.dueDate != null ? #temporals.format(task.dueDate, 'yyyy-MM-dd''T''HH:mm') : ''},
+                           data-creator-id=${task.creatorId},
+                           data-assignee-id=${task.assigneeId},
+                           data-subtasks=${task.subtasks != null ? task.subtasks : '[]'},
+                           data-comments=${task.comments != null ? task.comments : '[]'}
+                        "
+
+
+                    onclick="openTaskDetailsModal(this)">
+                    <!-- Кнопка редактирования, доступна только админу -->
+                        <button type="button"
+                                onclick="openEditTaskModal(this); event.stopPropagation();"
+                                th:attr="
+                data-task-id=${task.id},
+                data-title=${task.title},
+                data-description=${task.description},
+                data-status=${task.status},
+                data-priority=${task.priority},
+                data-due-date=${task.dueDate != null ? #temporals.format(task.dueDate, 'yyyy-MM-dd''T''HH:mm') : ''},
+                data-creator-id=${task.creatorId},
+                data-assignee-id=${task.assigneeId},
+                data-subtasks=${task.subtasks}
+              "
+                                class="absolute top-2 right-2 text-blue-500 hover:text-blue-700 focus:outline-none">
+                            <i class="fas fa-edit"></i>
+                        </button>
+                    <h4 class="font-semibold text-lg text-indigo-600" th:text="${task.title}">Task Title</h4>
+                    <p class="text-gray-700 mt-2" th:text="${task.description}">Task Description</p>
+                    <p class="text-sm text-gray-500 mt-2">
+                        Статус: <span th:text="${task.status}"></span> |
+                        Приоритет: <span th:text="${task.priority}"></span>
+                    </p>
+                    <p class="text-sm text-gray-500 mt-1">
+                        Дедлайн:
+                        <span th:if="${task.dueDate != null}"
+                              th:text="${#temporals.format(task.dueDate, 'dd-MM-yyyy HH:mm')}"></span>
+                        <span th:if="${task.dueDate == null}">Нет дедлайна</span>
+                    </p>
+                </li>
+            </ul>
+        </div>
+
+        <!-- Right Team Members -->
+        <div class="flex flex-col w-full md:w-1/4">
+            <h3 class="text-xl font-bold mb-4 text-center md:text-left">Участники</h3>
+            <ul class="space-y-3">
+                <li th:each="member : ${members}" class="bg-white p-3 rounded shadow flex justify-between items-center transition hover:shadow-lg">
+                    <span th:text="${member.username}">Member Name</span>
+                    <form th:action="@{/teams/delete/{teamId}/{memberId}(teamId=${team.id}, memberId=${member.id})}" method="post">
+                        <button type="submit" class="text-red-500 hover:text-red-700 transition">
+                            ✖
+                        </button>
+                    </form>
+                </li>
+            </ul>
+        </div>
+    </section>
+</main>
+
+<!-- Модальные окна -->
+<!-- Add Member Modal -->
+<div id="addMemberModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center hidden">
+    <div class="bg-white p-6 rounded shadow-md w-96">
+        <h2 class="text-xl font-bold mb-4">Добавить участника</h2>
+        <form th:action="@{/teams/invite/{teamId}(teamId=${team.id})}" method="post">
+            <input type="text" name="username" placeholder="Имя пользователя" class="border p-2 mb-4 w-full rounded focus:outline-none focus:ring-2 focus:ring-indigo-600" required>
+            <input type="hidden" name="adminId" th:value="${team.leaderId}" />
+            <button type="submit" class="w-full bg-indigo-600 text-white px-4 py-2 rounded hover:bg-indigo-700 transition mb-4">
+                Добавить
+            </button>
+        </form>
+        <button onclick="closeModal('addMemberModal')" class="w-full bg-red-600 text-white px-4 py-2 rounded hover:bg-red-700 transition">
+            Отмена
+        </button>
+    </div>
+</div>
+
+<!-- Leave Team Modal -->
+<div id="leaveTeamModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center hidden">
+    <div class="bg-white p-6 rounded shadow-md w-96">
+        <h2 class="text-xl font-bold mb-4">Выберите нового админа</h2>
+        <form id="adminLeaveFormWithSuccessor" th:action="@{/teams/leave/admin/{teamId}(teamId=${team.id})}" method="post">
+            <select name="nextAdmin" class="border p-2 mb-4 w-full rounded focus:outline-none focus:ring-2 focus:ring-indigo-600" required>
+                <option value="">-- Выберите участника --</option>
+                <option th:each="member : ${members}" th:if="${member.id != userId}" th:value="${member.id}" th:text="${member.username}"></option>
+            </select>
+            <button type="submit" class="w-full bg-indigo-600 text-white px-4 py-2 rounded hover:bg-indigo-700 transition mb-4">
+                Передать и покинуть
+            </button>
+        </form>
+        <button onclick="closeModal('leaveTeamModal')" class="w-full bg-red-600 text-white px-4 py-2 rounded hover:bg-red-700 transition">
+            Отмена
+        </button>
+    </div>
+</div>
+
+<!-- Форма для обычных пользователей (не админов) -->
+<form id="quitForm" th:action="@{/teams/quit/{teamId}(teamId=${team.id})}" method="post" class="hidden"></form>
+<!-- Форма для админа без наследников -->
+<form id="adminLeaveFormNoSuccessor" th:action="@{/teams/leave/admin/{teamId}(teamId=${team.id})}" method="post" class="hidden">
+    <input type="hidden" name="nextAdmin" value="">
+</form>
+
+<!-- Create Task Modal -->
+<div id="createTaskModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center hidden">
+    <div class="bg-white p-6 rounded shadow-md w-96">
+        <h2 class="text-xl font-bold mb-4">Создать новую задачу</h2>
+        <form th:action="@{/teams/create/task/{teamId}(teamId=${team.id})}" method="post">
+            <input type="text" name="title" placeholder="Название задачи" class="border p-2 mb-4 w-full rounded focus:outline-none focus:ring-2 focus:ring-indigo-600" required>
+            <textarea name="description" placeholder="Описание задачи" class="border p-2 mb-4 w-full rounded focus:outline-none focus:ring-2 focus:ring-indigo-600" required></textarea>
+            <select name="assigneeId" class="border p-2 mb-4 w-full rounded focus:outline-none focus:ring-2 focus:ring-indigo-600" required>
+                <option value="">-- Выберите исполнителя --</option>
+                <option th:each="member : ${members}" th:if="${member.id != userId}" th:value="${member.id}" th:text="${member.username}"></option>
+            </select>
+            <input type="datetime-local" name="dueDate" class="border p-2 mb-4 w-full rounded focus:outline-none focus:ring-2 focus:ring-indigo-600" required>
+            <input type="hidden" name="teamId" th:value="${team.id}" />
+            <button type="submit" class="w-full bg-indigo-600 text-white px-4 py-2 rounded hover:bg-indigo-700 transition mb-4">
+                Создать
+            </button>
+        </form>
+        <button onclick="closeModal('createTaskModal')" class="w-full bg-red-600 text-white px-4 py-2 rounded hover:bg-red-700 transition">
+            Отмена
+        </button>
+    </div>
+</div>
+
+<!-- Edit Task Modal -->
+<div id="editTaskModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center hidden">
+    <div class="bg-white p-6 rounded shadow-md w-96">
+        <h2 class="text-xl font-bold mb-4">Редактировать задачу</h2>
+        <form th:action="@{/teams/edit/task}" method="post">
+            <input type="hidden" name="id" id="editTaskId" />
+            <input type="hidden" name="teamId" th:value="${team.id}" />
+            <input type="hidden" name="creatorId" id="editCreatorId" />
+            <input type="hidden" name="assigneeId" id="editAssigneeId" />
+            <div class="mb-4">
+                <label for="editTitle" class="block text-gray-700 mb-1">Название задачи</label>
+                <input type="text" id="editTitle" name="title" class="w-full border p-2 rounded focus:outline-none focus:ring-2 focus:ring-indigo-600" required />
+            </div>
+            <div class="mb-4">
+                <label for="editDescription" class="block text-gray-700 mb-1">Описание задачи</label>
+                <textarea id="editDescription" name="description" class="w-full border p-2 rounded focus:outline-none focus:ring-2 focus:ring-indigo-600" required></textarea>
+            </div>
+            <div class="mb-4">
+                <label for="editStatus" class="block text-gray-700 mb-1">Статус</label>
+                <select id="editStatus" name="status" class="w-full border p-2 rounded focus:outline-none focus:ring-2 focus:ring-indigo-600" required>
+                    <option value="NEW">NEW</option>
+                    <option value="IN_PROGRESS">IN_PROGRESS</option>
+                    <option value="COMPLETED">COMPLETED</option>
+                </select>
+            </div>
+            <div class="mb-4">
+                <label for="editPriority" class="block text-gray-700 mb-1">Приоритет</label>
+                <select id="editPriority" name="priority" class="w-full border p-2 rounded focus:outline-none focus:ring-2 focus:ring-indigo-600" required>
+                    <option value="LOW">LOW</option>
+                    <option value="MEDIUM">MEDIUM</option>
+                    <option value="HIGH">HIGH</option>
+                </select>
+            </div>
+            <div class="mb-4">
+                <label for="editDueDate" class="block text-gray-700 mb-1">Дедлайн</label>
+                <input type="datetime-local" id="editDueDate" name="dueDate" class="w-full border p-2 rounded focus:outline-none focus:ring-2 focus:ring-indigo-600" required />
+            </div>
+            <div class="flex justify-end space-x-4">
+                <button type="button" onclick="closeModal('editTaskModal')" class="bg-red-600 text-white px-4 py-2 rounded hover:bg-red-700 transition">
+                    Отмена
+                </button>
+                <button type="submit" class="bg-indigo-600 text-white px-4 py-2 rounded hover:bg-indigo-700 transition">
+                    Сохранить изменения
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Task Details Modal (большее ~1.5x) -->
+<div id="taskDetailsModal" class="fixed inset-0 bg-gray-500 bg-opacity-75 overflow-y-auto z-50 hidden">
+    <div class="flex min-h-full items-center justify-center p-4">
+        <!-- Увеличиваем ширину на max-w-4xl -->
+        <div class="relative bg-white rounded-lg max-w-4xl w-full transform transition-all">
+            <!-- Кнопка закрытия в углу -->
+            <div class="absolute top-0 right-0 pt-4 pr-4">
+                <button onclick="closeTaskDetailsModal()" class="text-gray-400 hover:text-gray-500">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+
+            <!-- Содержимое модалки -->
+            <div class="px-6 py-4">
+                <div class="mb-6 border-b pb-4">
+                    <h2 id="detailsTitle" class="text-2xl font-bold text-gray-900 mb-2"></h2>
+                    <p id="detailsDescription" class="text-gray-700"></p>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <!-- Левая колонка -->
+                    <div>
+                        <div class="mb-4">
+                            <span class="font-semibold">Статус:</span>
+                            <span id="detailsStatus" class="ml-2 px-2 py-1 text-sm rounded"></span>
+                        </div>
+                        <div class="mb-4">
+                            <span class="font-semibold">Приоритет:</span>
+                            <span id="detailsPriority" class="ml-2 px-2 py-1 text-sm rounded"></span>
+                        </div>
+                        <div class="mb-4">
+                            <span class="font-semibold">Дедлайн:</span>
+                            <span id="detailsDueDate" class="ml-2 font-medium text-gray-700"></span>
+                        </div>
+                        <div class="mb-4">
+                            <span class="font-semibold">Автор (creatorId):</span>
+                            <span id="detailsCreator" class="ml-2 font-medium text-gray-700"></span>
+                        </div>
+                        <div class="mb-4">
+                            <span class="font-semibold">Исполнитель (assigneeId):</span>
+                            <span id="detailsAssignee" class="ml-2 font-medium text-gray-700"></span>
+                        </div>
+                        <!-- Кнопка "Удалить задачу" внутри taskDetailsModal -->
+                            <button
+                                    onclick="openDeleteTaskModal()"
+                                    class="bg-red-600 text-white px-4 py-2 rounded hover:bg-red-700 transition"
+                                    style="margin-left: 0.5rem;">
+                                Удалить задачу
+                            </button>
+                    </div>
+
+                    <!-- Правая колонка -->
+                    <div>
+                        <!-- Шапка подзадач (заголовок + кнопка) -->
+                        <div class="flex items-center justify-between mb-2">
+                            <h3 class="text-lg font-semibold">Подзадачи</h3>
+                                <button class="text-indigo-600 hover:text-indigo-800 text-sm"
+                                        onclick="openCreateSubtaskModal()">
+                                    + Создать подзадачу
+                                </button>
+                        </div>
+
+                        <!-- Блок для вывода списка подзадач -->
+                        <div id="detailsSubtasks" class="space-y-2">
+                            <!-- Здесь динамически добавим подзадачи -->
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Нижняя панель с кнопкой закрытия -->
+            <div class="px-6 py-4 bg-gray-50 rounded-b-lg">
+                <div class="flex justify-end">
+                    <button onclick="closeTaskDetailsModal()" class="px-4 py-2 bg-white border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50">
+                        Закрыть
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Confirm Delete Modal -->
+<div id="deleteTaskModal"
+     class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center hidden">
+    <div class="bg-white p-6 rounded shadow-md w-96">
+        <h2 class="text-xl font-bold mb-4">Вы действительно хотите удалить задачу?</h2>
+
+        <!-- Форма для удаления задачи -->
+        <form th:action="@{/teams/delete/task}" method="post">
+            <!-- Скрытые поля: taskId, teamId -->
+            <input type="hidden" name="taskId" id="deleteTaskId" />
+            <input type="hidden" name="teamId" th:value="${team.id}" />
+
+            <!-- Кнопки -->
+            <div class="flex justify-end space-x-4">
+                <button type="button"
+                        onclick="closeDeleteTaskModal()"
+                        class="bg-gray-300 text-gray-800 px-4 py-2 rounded hover:bg-gray-400 transition">
+                    Отмена
+                </button>
+                <button type="submit"
+                        class="bg-red-600 text-white px-4 py-2 rounded hover:bg-red-700 transition">
+                    Удалить
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Create Subtask Modal -->
+<div id="createSubtaskModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center hidden">
+    <div class="bg-white p-6 rounded shadow-md w-96">
+        <h2 class="text-xl font-bold mb-4">Создать подзадачу</h2>
+        <form th:action="@{/teams/create/subtask}" method="post">
+            <!-- Скрытые поля -->
+            <input type="hidden" name="teamId" id="createSubtaskTeamId" />
+            <input type="hidden" name="taskId" id="createSubtaskTaskId" />
+
+            <!-- Поля для Subtask -->
+            <label class="block mb-2 text-gray-700" for="subtaskTitle">Название подзадачи</label>
+            <input type="text" id="subtaskTitle" name="title" class="border p-2 mb-4 w-full rounded focus:outline-none" required />
+
+            <label class="block mb-2 text-gray-700" for="subtaskDescription">Описание</label>
+            <textarea id="subtaskDescription" name="description" rows="3"
+                      class="border p-2 mb-4 w-full rounded focus:outline-none"></textarea>
+
+            <!-- Пример, если нужно выбрать исполнителя подзадачи -->
+            <!-- <label class="block mb-2 text-gray-700">Assignee</label>
+            <select name="assigneeId" class="border p-2 mb-4 w-full rounded focus:outline-none">
+                <option value="">(не назначен)</option>
+                <option ...> ... </option>
+            </select> -->
+
+            <button type="submit"
+                    class="w-full bg-indigo-600 text-white px-4 py-2 rounded hover:bg-indigo-700 transition mb-4">
+                Создать
+            </button>
+        </form>
+        <button onclick="closeModal('createSubtaskModal')"
+                class="w-full bg-red-600 text-white px-4 py-2 rounded hover:bg-red-700 transition">
+            Отмена
+        </button>
+    </div>
+</div>
+
+<!-- Edit Subtask Modal -->
+<div id="editSubtaskModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center hidden">
+    <div class="bg-white p-6 rounded shadow-md w-96">
+        <h2 class="text-xl font-bold mb-4">Редактировать подзадачу</h2>
+        <form th:action="@{/teams/update/subtask}" method="post">
+            <!-- Скрытые поля для передачи важных идентификаторов -->
+            <input type="hidden" name="id" id="editSubtaskId" />
+            <input type="hidden" name="teamId" id="editSubtaskTeamId" />
+            <input type="hidden" name="taskId" id="editSubtaskTaskId" />
+
+            <!-- Поле Title -->
+            <div class="mb-4">
+                <label for="editSubtaskTitle" class="block text-gray-700 mb-1">Название подзадачи</label>
+                <input type="text" id="editSubtaskTitle" name="title"
+                       class="w-full border p-2 rounded focus:outline-none focus:ring-2 focus:ring-indigo-600"
+                       required />
+            </div>
+
+            <!-- Поле Description -->
+            <div class="mb-4">
+                <label for="editSubtaskDescription" class="block text-gray-700 mb-1">Описание</label>
+                <textarea id="editSubtaskDescription" name="description"
+                          class="w-full border p-2 rounded focus:outline-none focus:ring-2 focus:ring-indigo-600"
+                          rows="3"></textarea>
+            </div>
+
+            <!-- Поле Completed (чекбокс) -->
+            <div class="mb-4">
+                <label for="editSubtaskCompleted" class="block text-gray-700 mb-1">Выполнена?</label>
+                <input type="checkbox" id="editSubtaskCompleted" name="completed"
+                       class="mr-2 leading-tight" />
+            </div>
+
+            <!-- Кнопки сохранения и отмены -->
+            <div class="flex justify-end space-x-4">
+                <button type="button"
+                        onclick="closeModal('editSubtaskModal')"
+                        class="bg-red-600 text-white px-4 py-2 rounded hover:bg-red-700 transition">
+                    Отмена
+                </button>
+                <button type="submit"
+                        class="bg-indigo-600 text-white px-4 py-2 rounded hover:bg-indigo-700 transition">
+                    Сохранить изменения
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Transfer Admin Modal -->
+<div id="transferAdminModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center hidden">
+    <div class="bg-white p-6 rounded shadow-md w-96">
+        <h2 class="text-xl font-bold mb-4">Передача админства</h2>
+
+        <!-- Форма отправляется на /teams/assign/admin -->
+        <form th:action="@{/teams/assign/admin}" method="post">
+            <!-- Скрытое поле teamId -->
+            <input type="hidden" name="teamId" th:value="${team.id}" />
+
+            <!-- Выпадающий список участников (кроме самого админа) -->
+            <label class="block mb-2 text-gray-700" for="newAdminId">Выберите нового админа</label>
+            <select name="newAdminId"
+                    id="newAdminId"
+                    class="border p-2 mb-4 w-full rounded focus:outline-none focus:ring-2 focus:ring-indigo-600"
+                    required>
+                <option value="">-- Выберите участника --</option>
+                <option th:each="member : ${members}"
+                        th:if="${member.id != userId}"
+                        th:value="${member.id}"
+                        th:text="${member.username}">
+                </option>
+            </select>
+
+            <!-- Кнопка сабмита -->
+            <button type="submit"
+                    class="w-full bg-indigo-600 text-white px-4 py-2 rounded hover:bg-indigo-700 transition mb-4">
+                Передать
+            </button>
+        </form>
+
+        <!-- Кнопка «Отмена» -->
+        <button onclick="closeModal('transferAdminModal')"
+                class="w-full bg-red-600 text-white px-4 py-2 rounded hover:bg-red-700 transition">
+            Отмена
+        </button>
+    </div>
+</div>
+
+
+<script>
+    let currentTaskId = null;
+    const globalTeamId = [[${team.id}]];
+
+    function openModal(modalId) {
+        document.getElementById(modalId).classList.remove('hidden');
+    }
+
+    function closeModal(modalId) {
+        document.getElementById(modalId).classList.add('hidden');
+    }
+
+    function handleLeaveTeam() {
+        const userId = [[${userId}]];
+        const leaderId = [[${team.leaderId}]];
+        const memberCount = [[${#lists.size(members)}]];
+        if (userId === leaderId) {
+            if (memberCount <= 1) {
+                document.getElementById('adminLeaveFormNoSuccessor').submit();
+            } else {
+                openModal('leaveTeamModal');
+            }
+        } else {
+            document.getElementById('quitForm').submit();
+        }
+    }
+
+    // Открытие модалки редактирования при нажатии на иконку "edit"
+    function openEditTaskModal(button) {
+        // Предотвращаем всплытие события клика, чтобы не открылась ещё и модалка деталей
+        // (добавили event.stopPropagation() выше)
+        const taskId = button.getAttribute('data-task-id');
+        const title = button.getAttribute('data-title');
+        const description = button.getAttribute('data-description');
+        const status = button.getAttribute('data-status');
+        const priority = button.getAttribute('data-priority');
+        const dueDate = button.getAttribute('data-due-date');
+        const creatorId = button.getAttribute('data-creator-id');
+        const assigneeId = button.getAttribute('data-assignee-id');
+
+        document.getElementById('editTaskId').value = taskId;
+        document.getElementById('editTitle').value = title;
+        document.getElementById('editDescription').value = description;
+        document.getElementById('editStatus').value = status;
+        document.getElementById('editPriority').value = priority;
+        document.getElementById('editDueDate').value = dueDate;
+        document.getElementById('editCreatorId').value = creatorId;
+        document.getElementById('editAssigneeId').value = assigneeId;
+
+        document.getElementById('editTaskModal').classList.remove('hidden');
+    }
+
+    // Модалка деталей задачи (TEAM)
+    function openTaskDetailsModal(taskElement) {
+        currentTaskId = taskElement.getAttribute('data-task-id');
+        const userId = [[${userId}]];
+        const leaderId = [[${team.leaderId}]];
+        const isAdmin = (userId === leaderId);
+
+        console.log('userId: ' + userId);
+        console.log('leaderId: ' + leaderId);
+
+        // 1) Считываем все нужные атрибуты
+        const parentTaskId = taskElement.getAttribute('data-task-id');
+        const title = taskElement.getAttribute('data-title');
+        const description = taskElement.getAttribute('data-description');
+        const status = taskElement.getAttribute('data-status');
+        const priority = taskElement.getAttribute('data-priority');
+        const dueDate = taskElement.getAttribute('data-due-date');
+        const creatorId = taskElement.getAttribute('data-creator-id');
+        const assigneeId = taskElement.getAttribute('data-assignee-id');
+
+        // ВАЖНО: здесь subtasksJson - не JSON, а просто строка вида:
+        // [Subtask(id=1, ...), Subtask(id=5, ...)]
+        const rawSubtasksStr = taskElement.getAttribute('data-subtasks') || '';
+
+        // А comments, видимо, тоже не JSON, аналогично
+        const rawCommentsStr = taskElement.getAttribute('data-comments') || '';
+
+        // Заполняем общие поля
+        document.getElementById('detailsTitle').textContent = title;
+        document.getElementById('detailsDescription').textContent = description;
+        document.getElementById('detailsCreator').textContent = creatorId || 'неизвестен';
+        document.getElementById('detailsAssignee').textContent = assigneeId || 'не назначен';
+        document.getElementById('detailsDueDate').textContent = dueDate || 'нет дедлайна';
+
+        // статус
+        const statusEl = document.getElementById('detailsStatus');
+        statusEl.textContent = status;
+        statusEl.className = 'ml-2 px-2 py-1 text-sm rounded';
+        switch (status) {
+            case 'NEW':
+                statusEl.classList.add('bg-blue-100','text-blue-800');
+                break;
+            case 'IN_PROGRESS':
+                statusEl.classList.add('bg-yellow-100','text-yellow-800');
+                break;
+            case 'COMPLETED':
+                statusEl.classList.add('bg-green-100','text-green-800');
+                break;
+            default:
+                statusEl.classList.add('bg-gray-100','text-gray-800');
+        }
+
+        // приоритет
+        const priorityEl = document.getElementById('detailsPriority');
+        priorityEl.textContent = priority;
+        priorityEl.className = 'ml-2 px-2 py-1 text-sm rounded';
+        switch (priority) {
+            case 'LOW':
+                priorityEl.classList.add('bg-green-100','text-green-800');
+                break;
+            case 'MEDIUM':
+                priorityEl.classList.add('bg-yellow-100','text-yellow-800');
+                break;
+            case 'HIGH':
+                priorityEl.classList.add('bg-red-100','text-red-800');
+                break;
+            default:
+                priorityEl.classList.add('bg-gray-100','text-gray-800');
+        }
+
+        const subtasksContainer = document.getElementById('detailsSubtasks');
+
+        // Если строка вида [Subtask(...), Subtask(...)]:
+        if (rawSubtasksStr && rawSubtasksStr.length > 2) {
+            const inner = rawSubtasksStr.slice(1, -1).trim();
+            const subtaskChunks = inner.split("Subtask(")
+                .map(ch => ch.trim())
+                .filter(ch => ch.length > 0);
+
+            let html = "";
+            subtaskChunks.forEach(chunk => {
+                // Вытаскиваем поля
+                const idMatch = chunk.match(/id=(\d+)/);
+                const parentId = idMatch[1]; // Используем захваченную группу (цифры)
+
+                const titleMatch  = chunk.match(/title=([^,]+)/);
+                const descMatch   = chunk.match(/description=([^,]+)/);
+                const compMatch   = chunk.match(/completed=([^,]+)/);
+
+                const subtaskId   = idMatch     ? idMatch[1].trim()     : "";
+                const title       = titleMatch  ? titleMatch[1].trim()  : "(нет)";
+                const description = descMatch   ? descMatch[1].trim()   : "(нет)";
+                const isDone      = (compMatch && compMatch[1].trim() === "true");
+
+                html += `
+                  <div class="p-3 mb-2 bg-gray-50 border rounded flex items-start justify-between">
+                    <div>
+                      <div class="font-semibold text-lg">Задача: ${title}</div>
+                      <p class="text-sm text-gray-600">Описание: ${description}</p>
+                      <p class="mt-1 text-sm">
+                        Статус:
+                        <span class="${isDone ? 'text-green-700' : 'text-red-600'} font-bold">
+                          ${isDone ? 'Выполнена ✓' : 'Не выполнена ×'}
+                        </span>
+                      </p>
+                    </div>
+
+                    <div class="flex items-center space-x-4 ml-4">
+                      ${
+                    isAdmin
+                        ? `
+                        <form action="/teams/delete/subtask"
+                              method="post"
+                              class="m-0 p-0 inline-block"
+                              onsubmit="return handleDeleteSubmit(this)">
+                            <input type="hidden" name="teamId" value="${globalTeamId}" />
+                            <input type="hidden" name="taskId" value="${parentTaskId}" />
+                            <input type="hidden" name="subtaskId" value="${parentId}" />
+                            <button type="submit" class="text-red-600 hover:text-red-800">
+                                <i class="fas fa-trash"></i>
+                            </button>
+                        </form>
+
+                        <button class="text-blue-600 hover:text-blue-800"
+                                onclick="openSubtaskEditModal('${subtaskId}','${title}','${description}',${isDone})">
+                            <i class="fas fa-edit"></i>
+                        </button>
+                      `
+                        : ''
+                }
+                </div>
+              </div>
+            `;
+                console.log('globalTeamId: ' + globalTeamId + ' parentTaskId: ' + parentTaskId + ' subtaskdId: ' + parentId);
+            });
+
+            subtasksContainer.innerHTML = html;
+        } else {
+            subtasksContainer.innerHTML = '<p class="text-gray-500">Подзадач пока нет</p>';
+        }
+
+
+        document.getElementById('taskDetailsModal').classList.remove('hidden');
+    }
+
+    function closeTaskDetailsModal() {
+        document.getElementById('taskDetailsModal').classList.add('hidden');
+    }
+
+    // Закрытие модалок при клике вне
+    window.onclick = function(event) {
+        const modalsToCloseOnBgClick = [
+            'addMemberModal','leaveTeamModal','createTaskModal',
+            'editTaskModal','taskDetailsModal'
+        ];
+        modalsToCloseOnBgClick.forEach(modalId => {
+            const modal = document.getElementById(modalId);
+            if (event.target === modal) {
+                modal.classList.add('hidden');
+            }
+        });
+    };
+
+    // Нажимаем кнопку "Удалить задачу" в taskDetailsModal => открываем confirm-окно
+    function openDeleteTaskModal() {
+        // Вставляем taskId в форму удаления
+        document.getElementById('deleteTaskId').value = currentTaskId;
+        // Открываем окно confirm
+        document.getElementById('deleteTaskModal').classList.remove('hidden');
+        closeTaskDetailsModal()
+    }
+
+    function closeDeleteTaskModal() {
+        document.getElementById('deleteTaskModal').classList.add('hidden');
+    }
+
+    function openCreateSubtaskModal() {
+        closeTaskDetailsModal();
+        // мы уже знаем currentTaskId из openTaskDetailsModal
+        // (где вы сохранили currentTaskId = ...;)
+        // Нужно также узнать teamId (можно получить один раз th:value или global var)
+
+        const teamId = [[${team.id}]]; // если шаблонизатор позволяет
+        const modal = document.getElementById('createSubtaskModal');
+
+        // Заполняем скрытые поля:
+        document.getElementById('createSubtaskTeamId').value = teamId;
+        document.getElementById('createSubtaskTaskId').value = currentTaskId;
+        // currentTaskId мы запоминали, когда открывали детали задачи
+
+        modal.classList.remove('hidden');
+    }
+
+    function openSubtaskEditModal(subtaskId, title, description, completed) {
+        closeTaskDetailsModal();
+
+        // Заполняем скрытые поля
+        document.getElementById('editSubtaskId').value = subtaskId;
+        document.getElementById('editSubtaskTeamId').value = globalTeamId;   // teamId, заранее объявлен
+        document.getElementById('editSubtaskTaskId').value = currentTaskId;  // taskId, когда открыли детали задачи
+
+        // Заполняем видимые поля
+        document.getElementById('editSubtaskTitle').value = title;
+        document.getElementById('editSubtaskDescription').value = description;
+        document.getElementById('editSubtaskCompleted').checked = completed;
+
+        // Открываем модалку
+        document.getElementById('editSubtaskModal').classList.remove('hidden');
+    }
+
+</script>
+</body>
+</html>

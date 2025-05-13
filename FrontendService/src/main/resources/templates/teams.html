@@ -1,0 +1,190 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Teams - TaskMaster</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+
+<body class="bg-gray-50 min-h-screen">
+
+<!-- Хедер -->
+<nav class="bg-white shadow-sm">
+    <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+        <div class="flex h-16 justify-between">
+            <div class="flex items-center">
+                <i class="fas fa-tasks text-indigo-600 text-2xl"></i>
+                <span class="ml-2 text-xl font-semibold text-gray-900">TaskMaster</span>
+            </div>
+            <div class="flex items-center">
+                <a href="/dashboard" class="text-gray-600 hover:text-gray-900 px-3 py-2 rounded-md text-sm font-medium">Main</a>
+                <a href="/tasks" class="text-gray-600 hover:text-gray-900 px-3 py-2 rounded-md text-sm font-medium">Tasks</a>
+                <a href="/teams" class="text-indigo-600 hover:text-indigo-900 px-3 py-2 rounded-md text-sm font-medium">Teams</a>
+                <a href="/user-info" class="text-gray-600 hover:text-gray-900 px-3 py-2 rounded-md text-sm font-medium">
+                    Profile
+                </a>
+                <form th:action="@{/logout}" method="post" class="ml-4">
+                    <button type="submit" class="text-gray-600 hover:text-gray-900 px-3 py-2 rounded-md text-sm font-medium">Logout</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</nav>
+
+<!-- Контент страницы -->
+<div class="container mx-auto py-8">
+    <!-- Flash Messages -->
+    <div class="mb-4">
+        <div id="errorContainer" class="mb-4"></div>
+        <div th:if="${successMessage}" class="bg-green-50 border border-green-400 text-green-800 px-4 py-3 rounded relative shadow-md">
+            <span class="font-bold">Успех:</span> <span th:text="${successMessage}"></span>
+        </div>
+        <div th:if="${errorMessage}" class="bg-red-50 border border-red-400 text-red-800 px-4 py-3 rounded relative shadow-md">
+            <span class="font-bold">Ошибка:</span> <span th:text="${errorMessage}"></span>
+        </div>
+    </div>
+
+    <h1 class="text-3xl font-bold mb-6 text-gray-900">Teams</h1>
+
+    <!-- Кнопка создания команды -->
+    <button id="openModalBtn" class="bg-indigo-600 text-white px-4 py-2 rounded mb-6 hover:bg-indigo-700 transition">
+        <i class="fas fa-plus mr-2"></i>Create New Team
+    </button>
+
+    <!-- Список команд как карточки -->
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        <a th:href="@{'/teams/' + ${team.id}}" th:each="team : ${userTeams}"
+           class="bg-white p-4 rounded-lg shadow hover:shadow-lg transition-shadow duration-200 cursor-pointer border-l-4 border-indigo-500">
+            <h2 class="text-xl font-bold mb-2 text-gray-900" th:text="${team.name}"></h2>
+            <p class="text-gray-600 mb-2" th:text="${team.description}"></p>
+            <p class="text-sm text-gray-500">
+                <i class="fas fa-user mr-1"></i>Leader: <span th:text="${team.leaderName}"></span>
+            </p>
+            <p class="text-sm text-gray-500">
+                <i class="fas fa-users mr-1"></i>Members: <span th:text="${team.membersCount}"></span>
+            </p>
+        </a>
+    </div>
+</div>
+
+<!-- Модальное окно создания команды -->
+<div id="modal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden">
+    <div class="bg-white p-6 rounded-lg shadow-lg w-full max-w-lg">
+        <h2 class="text-2xl font-bold mb-4 text-gray-900">Create a Team</h2>
+
+        <!-- Привязка к CreateTeamDTO -->
+        <form id="createTeamForm" th:action="@{/teams/create}" th:object="${createTeamDTO}" method="post">
+            <input type="text" th:field="*{title}" placeholder="Team Name"
+                   class="w-full p-2 mb-4 border border-gray-300 rounded" required>
+
+            <textarea th:field="*{description}" placeholder="Description"
+                      class="w-full p-2 mb-4 border border-gray-300 rounded"></textarea>
+
+            <!-- Чекбокс для isCorporate -->
+            <label class="flex items-center mb-4">
+                <input type="checkbox" th:field="*{isCorporate}" class="form-checkbox h-5 w-5 text-indigo-600">
+                <span class="ml-2 text-gray-700">Is Corporate Team</span>
+            </label>
+
+            <!-- Ввод участников -->
+            <div id="membersContainer" class="mb-4">
+                <input type="text" id="memberInput" placeholder="Type a member name and press Space"
+                       class="w-full p-2 mb-2 border border-gray-300 rounded">
+                <div id="membersList" class="flex flex-wrap gap-2"></div>
+                <!-- Контейнер для скрытых полей -->
+                <div id="hiddenInputsContainer"></div>
+            </div>
+
+            <div class="flex justify-end gap-2">
+                <button type="button" id="closeModalBtn" class="bg-gray-300 px-4 py-2 rounded">Cancel</button>
+                <button type="submit" class="bg-indigo-600 text-white px-4 py-2 rounded hover:bg-indigo-700 transition">
+                    Create
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Скрипт для управления модалкой -->
+<script>
+    const modal = document.getElementById('modal');
+    const openModalBtn = document.getElementById('openModalBtn');
+    const closeModalBtn = document.getElementById('closeModalBtn');
+    const createTeamForm = document.getElementById('createTeamForm');
+    const memberInput = document.getElementById('memberInput');
+    const membersList = document.getElementById('membersList');
+    const hiddenInputsContainer = document.getElementById('hiddenInputsContainer');
+
+    let members = [];
+
+    openModalBtn.addEventListener('click', () => {
+        modal.classList.remove('hidden');
+    });
+
+    closeModalBtn.addEventListener('click', () => {
+        modal.classList.add('hidden');
+        resetForm();
+    });
+
+    window.addEventListener('click', (event) => {
+        if (event.target === modal) {
+            modal.classList.add('hidden');
+            resetForm();
+        }
+    });
+
+    memberInput.addEventListener('keydown', (event) => {
+        if (event.keyCode === 32 && memberInput.value.trim()) {
+            event.preventDefault();
+            const member = memberInput.value.trim();
+            members.push(member);
+            updateMembersList();
+            memberInput.value = '';
+        }
+    });
+
+    function updateMembersList() {
+        membersList.innerHTML = '';
+        hiddenInputsContainer.innerHTML = '';
+
+        members.forEach((member, index) => {
+            // Отображаем участников
+            const span = document.createElement('span');
+            span.className = 'bg-indigo-100 text-indigo-800 px-2 py-1 rounded flex items-center';
+            span.innerHTML = `${member} <button type="button" class="ml-2 text-red-500" onclick="removeMember(${index})">✕</button>`;
+            membersList.appendChild(span);
+
+            // Создаём скрытые инпуты для каждого участника
+            const hiddenInput = document.createElement('input');
+            hiddenInput.type = 'hidden';
+            hiddenInput.name = 'membersName';  // Ключевой момент для Thymeleaf
+            hiddenInput.value = member;
+            hiddenInputsContainer.appendChild(hiddenInput);
+        });
+    }
+
+    function removeMember(index) {
+        members.splice(index, 1);
+        updateMembersList();
+    }
+
+    function resetForm() {
+        createTeamForm.reset();
+        members = [];
+        updateMembersList();
+    }
+
+    createTeamForm.addEventListener('submit', (event) => {
+        if (members.length === 0) {
+            event.preventDefault();
+            alert('Please add at least one member!');
+        }
+    });
+
+</script>
+
+</body>
+</html>
